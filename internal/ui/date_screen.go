@@ -153,7 +153,7 @@ func (a *App) handleLoadCalendar(startDateStr, endDateStr string) {
 	go func() {
 		workLogs, err := a.jiraClient.GetWorkLogs(startDate, endDate)
 
-		// Update UI on main thread
+		// Hide progress first
 		progress.Hide()
 
 		if err != nil {
@@ -163,16 +163,15 @@ func (a *App) handleLoadCalendar(startDateStr, endDateStr string) {
 		}
 
 		log.Printf("[UI] Fetched %d work logs", len(workLogs))
+		
+		// Store data
 		a.workLogs = workLogs
-
-		// Aggregate by date
+		a.startDate = startDate
+		a.endDate = endDate
 		a.daySummary = jira.AggregateWorkLogs(workLogs)
 
-		if len(a.daySummary) == 0 {
-			dialog.ShowInformation("No Data", "No work logs found for the selected date range.", a.window)
-			return
-		}
-
+		// Show calendar screen
+		// Note: Fyne handles threading internally for UI updates
 		a.showCalendarScreen()
 	}()
 }

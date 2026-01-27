@@ -2,6 +2,7 @@ package ui
 
 import (
 	"log"
+	"time"
 
 	"fyne.io/fyne/v2"
 
@@ -20,6 +21,8 @@ type App struct {
 	// State
 	workLogs   []models.WorkLog
 	daySummary map[string]*models.DayWorkSummary
+	startDate  time.Time
+	endDate    time.Time
 	loading    bool
 	errorMsg   string
 
