@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jira Work Calendar</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <div id="config-screen" class="screen">
+            <div class="header">
+                <h1>Jira Configuration</h1>
+                <div class="header-buttons">
+                    <button id="close-config-btn" class="close-btn" title="Close">×</button>
+                </div>
+            </div>
+            <form id="config-form">
+                <div class="form-group">
+                    <label for="baseURL">Jira Base URL</label>
+                    <input type="text" id="baseURL" placeholder="https://your-domain.atlassian.net" required>
+                </div>
+                <div class="form-group">
+                    <label for="username">Username/Email</label>
+                    <input type="text" id="username" placeholder="your-email@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="apiToken">API Token</label>
+                    <div class="password-input-wrapper">
+                        <input type="password" id="apiToken" placeholder="Your Jira API Token" required>
+                        <button type="button" id="toggle-api-token" class="toggle-visibility-btn" title="Show/Hide API Token">👁️</button>
+                    </div>
+                </div>
+                <button type="submit">Save Configuration</button>
+            </form>
+            <p class="help-text">
+                Enter your Jira credentials to get started.<br>
+                You can generate an API token at:<br>
+                <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank">
+                    https://id.atlassian.com/manage-profile/security/api-tokens
+                </a>
+            </p>
+        </div>
+
+        <div id="date-screen" class="screen hidden">
+            <div class="screen-header">
+                <h1>Jira Work Calendar</h1>
+                <button id="settings-btn-date" class="settings-btn" title="Settings">⚙️</button>
+            </div>
+            <div class="date-screen-content">
+                <div class="date-form-container">
+                    <div class="calendar-widget">
+                        <div class="calendar-header">
+                            <button id="prev-month" class="calendar-nav-btn">‹</button>
+                            <div class="calendar-month-year">
+                                <span id="current-month-year"></span>
+                            </div>
+                            <button id="next-month" class="calendar-nav-btn">›</button>
+                        </div>
+                        <div class="calendar-weekdays">
+                            <div class="weekday">Sun</div>
+                            <div class="weekday">Mon</div>
+                            <div class="weekday">Tue</div>
+                            <div class="weekday">Wed</div>
+                            <div class="weekday">Thu</div>
+                            <div class="weekday">Fri</div>
+                            <div class="weekday">Sat</div>
+                        </div>
+                        <div id="calendar-grid" class="calendar-grid"></div>
+                        <div class="calendar-selection">
+                            <div class="selection-info">
+                                <div class="selection-item">
+                                    <label>Start Date:</label>
+                                    <span id="selected-start-date">Not selected</span>
+                                </div>
+                                <div class="selection-item">
+                                    <label>End Date:</label>
+                                    <span id="selected-end-date">Not selected</span>
+                                </div>
+                            </div>
+                            <button id="load-calendar-btn" class="load-btn" disabled>Load Calendar</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="user-info-container">
+                    <div id="user-info"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="calendar-screen" class="screen hidden">
+            <div class="header">
+                <h1>Work Log Calendar</h1>
+                <div class="header-buttons">
+                    <button id="settings-btn-calendar" class="settings-btn" title="Settings">⚙️</button>
+                    <button id="add-worklog-btn">Add Worklog</button>
+                    <button id="close-btn">×</button>
+                </div>
+            </div>
+            <div id="calendar-table"></div>
+        </div>
+    </div>
+    <script src="wails.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>

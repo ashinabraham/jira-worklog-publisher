@@ -1,0 +1,16 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "jira-calendar",
+  "outputfilename": "jira-calendar",
+  "frontend": {
+    "dir": "./frontend/dist",
+    "install": "",
+    "build": "",
+    "bridge": "main.js",
+    "serve": ""
+  },
+  "author": {
+    "name": "Ashin Abraham",
+    "email": "ashineabraham@gmail.com"
+  }
+}

@@ -11,21 +11,21 @@ type JiraConfig struct {
 
 // WorkLog represents a single work log entry
 type WorkLog struct {
-	ID               string
-	IssueKey         string
-	IssueSummary     string
-	TimeSpent        string
-	TimeSpentSeconds int
-	Started          time.Time
-	Author           WorkLogAuthor
-	Comment          string
+	ID               string        `json:"id"`
+	IssueKey         string        `json:"issueKey"`
+	IssueSummary     string        `json:"issueSummary"`
+	TimeSpent        string        `json:"timeSpent"`
+	TimeSpentSeconds int           `json:"timeSpentSeconds"`
+	Started          time.Time     `json:"started"`
+	Author           WorkLogAuthor `json:"author"`
+	Comment          string        `json:"comment"`
 }
 
 // WorkLogAuthor represents the author of a work log
 type WorkLogAuthor struct {
-	DisplayName  string
-	AccountID    string
-	EmailAddress string
+	DisplayName  string `json:"displayName"`
+	AccountID    string `json:"accountID"`
+	EmailAddress string `json:"emailAddress"`
 }
 
 // DayWorkSummary aggregates work logs for a single day

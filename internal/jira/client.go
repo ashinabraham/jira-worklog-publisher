@@ -10,118 +10,267 @@ import (
 	"strings"
 	"time"
 
-	"github.com/andygrunwald/go-jira"
-
 	"jira-calendar/internal/models"
 )
 
-// Client wraps the go-jira client with our custom logic
-type Client struct {
-	client       *jira.Client
-	httpClient   *http.Client
-	baseURL      string
-	username     string
-	apiToken     string
-	AccountID    string
-	DisplayName  string
-	EmailAddress string
-	TimeZone     string
-	AvatarURL    string
-	Locale       string
-	AccountType  string
-	Active       bool
-	SelfURL      string
+// Authenticator defines the interface for Jira authentication mechanisms
+type Authenticator interface {
+	// AuthenticateRequest adds authentication headers/credentials to the HTTP request
+	AuthenticateRequest(req *http.Request) error
+	// GetHTTPClient returns an HTTP client configured for this auth method
+	GetHTTPClient() *http.Client
 }
 
-// NewClient creates a new Jira client with authentication
-func NewClient(config models.JiraConfig) (*Client, error) {
+// BasicAuth implements Authenticator using username and API token
+type BasicAuth struct {
+	username string
+	apiToken string
+	client   *http.Client
+}
+
+// NewBasicAuth creates a new basic authentication mechanism
+func NewBasicAuth(username, apiToken string) Authenticator {
+	return &BasicAuth{
+		username: username,
+		apiToken: apiToken,
+		client: &http.Client{
+			Timeout: 30 * time.Second,
+		},
+	}
+}
+
+// AuthenticateRequest adds basic auth headers to the request
+func (b *BasicAuth) AuthenticateRequest(req *http.Request) error {
+	req.SetBasicAuth(b.username, b.apiToken)
+	return nil
+}
+
+// GetHTTPClient returns the HTTP client for basic auth
+func (b *BasicAuth) GetHTTPClient() *http.Client {
+	return b.client
+}
+
+// Client is a custom Jira API client
+type Client struct {
+	httpClient *http.Client
+	baseURL    string
+	auth       Authenticator
+	AccountID  string // Needed for filtering worklogs by current user
+}
+
+// Jira API response types
+type jiraUser struct {
+	AccountID    string            `json:"accountId"`
+	DisplayName  string            `json:"displayName"`
+	EmailAddress string            `json:"emailAddress"`
+	TimeZone     string            `json:"timeZone"`
+	AvatarUrls   map[string]string `json:"avatarUrls"`
+	Locale       string            `json:"locale"`
+	AccountType  string            `json:"accountType"`
+	Active       bool              `json:"active"`
+	Self         string            `json:"self"`
+}
+
+type jiraIssue struct {
+	ID     string       `json:"id"`
+	Key    string       `json:"key"`
+	Fields jiraFields   `json:"fields"`
+}
+
+type jiraFields struct {
+	Summary string `json:"summary"`
+}
+
+// jiraComment can be a string or an object (rich text)
+type jiraComment struct {
+	raw json.RawMessage
+}
+
+// UnmarshalJSON handles both string and object comment formats
+func (c *jiraComment) UnmarshalJSON(data []byte) error {
+	c.raw = data
+	return nil
+}
+
+// String extracts the comment text from either format
+func (c *jiraComment) String() string {
+	if len(c.raw) == 0 {
+		return ""
+	}
+	
+	// Try as string first
+	var str string
+	if err := json.Unmarshal(c.raw, &str); err == nil {
+		return str
+	}
+	
+	// Try as rich text object (Atlassian Document Format)
+	var richText struct {
+		Type    string `json:"type"`
+		Content []struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+			Content []struct {
+				Type string `json:"type"`
+				Text string `json:"text"`
+			} `json:"content"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(c.raw, &richText); err == nil {
+		// Extract text from content array
+		var text strings.Builder
+		for _, item := range richText.Content {
+			if item.Type == "text" {
+				text.WriteString(item.Text)
+			} else if item.Type == "paragraph" {
+				// Handle nested content in paragraphs
+				for _, nested := range item.Content {
+					if nested.Type == "text" {
+						text.WriteString(nested.Text)
+					}
+				}
+			}
+		}
+		return text.String()
+	}
+	
+	return ""
+}
+
+type jiraWorklogRecord struct {
+	ID               string      `json:"id"`
+	TimeSpent        string      `json:"timeSpent"`
+	TimeSpentSeconds int         `json:"timeSpentSeconds"`
+	Started          string      `json:"started"`
+	Author           jiraUser    `json:"author"`
+	Comment          jiraComment `json:"comment"`
+}
+
+type jiraWorklogResponse struct {
+	Worklogs []jiraWorklogRecord `json:"worklogs"`
+	MaxResults int               `json:"maxResults"`
+	StartAt    int               `json:"startAt"`
+	Total      int               `json:"total"`
+}
+
+type jiraSearchRequest struct {
+	JQL           string   `json:"jql"`
+	MaxResults    int      `json:"maxResults"`
+	Fields        []string `json:"fields"`
+	NextPageToken string   `json:"nextPageToken,omitempty"`
+}
+
+type jiraSearchResponse struct {
+	Issues        []jiraIssue `json:"issues"`
+	IsLast        bool        `json:"isLast"`
+	NextPageToken string      `json:"nextPageToken,omitempty"`
+}
+
+// NewClient creates a new Jira client with the provided authenticator
+func NewClient(baseURL string, auth Authenticator) (*Client, error) {
 	log.Printf("[JIRA] Creating new Jira client")
-	log.Printf("[JIRA] BaseURL: %s", config.BaseURL)
-	log.Printf("[JIRA] Username: %s", config.Username)
+	log.Printf("[JIRA] BaseURL: %s", baseURL)
 
 	// Normalize base URL - remove trailing slash
-	baseURL := strings.TrimSuffix(config.BaseURL, "/")
+	normalizedURL := strings.TrimSuffix(baseURL, "/")
 
-	// Setup authentication
-	tp := jira.BasicAuthTransport{
-		Username: config.Username,
-		Password: config.APIToken,
+	client := &Client{
+		httpClient: auth.GetHTTPClient(),
+		baseURL:    normalizedURL,
+		auth:       auth,
 	}
 
-	// Create Jira client
-	client, err := jira.NewClient(tp.Client(), baseURL)
+	// Authenticate and get user info to verify connection and get AccountID
+	user, err := client.getCurrentUser()
 	if err != nil {
-		log.Printf("[JIRA] Error creating Jira client: %v", err)
-		return nil, fmt.Errorf("failed to create Jira client: %v", err)
-	}
-
-	log.Printf("[JIRA] Jira client created, authenticating...")
-
-	// Get current user's account ID
-	user, _, err := client.User.GetSelf()
-	if err != nil {
-		log.Printf("[JIRA] Authentication failed: %v", err)
 		return nil, fmt.Errorf("failed to authenticate: %v", err)
 	}
 
-	log.Printf("[JIRA] Authentication successful")
-	log.Printf("[JIRA] User: %s (Account ID: %s)", user.DisplayName, user.AccountID)
-	log.Printf("[JIRA] Email: %s, TimeZone: %s", user.EmailAddress, user.TimeZone)
+	// Store AccountID for filtering worklogs
+	client.AccountID = user.AccountID
 
-	// Get largest avatar URL
-	avatarURL := ""
-	if user.AvatarUrls.Four8X48 != "" {
-		avatarURL = user.AvatarUrls.Four8X48
-	} else if user.AvatarUrls.Three2X32 != "" {
-		avatarURL = user.AvatarUrls.Three2X32
-	} else if user.AvatarUrls.Two4X24 != "" {
-		avatarURL = user.AvatarUrls.Two4X24
-	} else if user.AvatarUrls.One6X16 != "" {
-		avatarURL = user.AvatarUrls.One6X16
+	log.Printf("[JIRA] Authentication successful")
+	log.Printf("[JIRA] User: %s (Account ID: %s)", user.DisplayName, client.AccountID)
+	log.Printf("[JIRA] Email: %s", user.EmailAddress)
+
+	return client, nil
+}
+
+// getCurrentUser fetches the current authenticated user
+func (jc *Client) getCurrentUser() (*jiraUser, error) {
+	url := fmt.Sprintf("%s/rest/api/3/myself", jc.baseURL)
+	log.Printf("[JIRA] GET %s", url)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %v", err)
 	}
 
-	log.Printf("[JIRA] Avatar URL: %s", avatarURL)
-	log.Printf("[JIRA] Locale: %s, Account Type: %s, Active: %t", user.Locale, user.AccountType, user.Active)
-	log.Printf("[JIRA] Self URL: %s", user.Self)
+	if err := jc.auth.AuthenticateRequest(req); err != nil {
+		return nil, fmt.Errorf("failed to authenticate request: %v", err)
+	}
+	req.Header.Set("Accept", "application/json")
 
-	return &Client{
-		client:       client,
-		httpClient:   tp.Client(),
-		baseURL:      baseURL,
-		username:     config.Username,
-		apiToken:     config.APIToken,
-		AccountID:    user.AccountID,
-		DisplayName:  user.DisplayName,
-		EmailAddress: user.EmailAddress,
-		TimeZone:     user.TimeZone,
-		AvatarURL:    avatarURL,
-		Locale:       user.Locale,
-		AccountType:  user.AccountType,
-		Active:       user.Active,
-		SelfURL:      user.Self,
+	resp, err := jc.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	log.Printf("[JIRA] Response status: %d", resp.StatusCode)
+
+	if resp.StatusCode != 200 {
+		log.Printf("[JIRA] Response body: %s", string(body))
+		return nil, fmt.Errorf("authentication failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var user jiraUser
+	if err := json.Unmarshal(body, &user); err != nil {
+		return nil, fmt.Errorf("failed to parse user response: %v", err)
+	}
+
+	return &user, nil
+}
+
+// GetUserInfo fetches the current user information from the API
+func (jc *Client) GetUserInfo() (map[string]interface{}, error) {
+	user, err := jc.getCurrentUser()
+	if err != nil {
+		return nil, err
+	}
+
+	// Get largest available avatar URL
+	avatarURL := ""
+	if avatar48, ok := user.AvatarUrls["48x48"]; ok && avatar48 != "" {
+		avatarURL = avatar48
+	} else if avatar32, ok := user.AvatarUrls["32x32"]; ok && avatar32 != "" {
+		avatarURL = avatar32
+	} else if avatar24, ok := user.AvatarUrls["24x24"]; ok && avatar24 != "" {
+		avatarURL = avatar24
+	} else if avatar16, ok := user.AvatarUrls["16x16"]; ok && avatar16 != "" {
+		avatarURL = avatar16
+	}
+
+	return map[string]interface{}{
+		"accountID":    user.AccountID,
+		"displayName":  user.DisplayName,
+		"emailAddress": user.EmailAddress,
+		"avatarURL":    avatarURL,
+		"timeZone":     user.TimeZone,
+		"locale":       user.Locale,
+		"accountType":  user.AccountType,
+		"active":       user.Active,
 	}, nil
 }
 
-// searchIssuesWithJQL performs a JQL search using the correct API endpoint
-func (jc *Client) searchIssuesWithJQL(jql string) ([]jira.Issue, error) {
-	type SearchRequest struct {
-		JQL           string   `json:"jql"`
-		MaxResults    int      `json:"maxResults"`
-		Fields        []string `json:"fields"`
-		NextPageToken string   `json:"nextPageToken,omitempty"`
-	}
-
-	type SearchResponse struct {
-		Issues        []jira.Issue `json:"issues"`
-		IsLast        bool         `json:"isLast"`
-		NextPageToken string       `json:"nextPageToken,omitempty"`
-	}
-
-	var allIssues []jira.Issue
+// searchIssuesWithJQL performs a JQL search using the Jira REST API v3
+func (jc *Client) searchIssuesWithJQL(jql string) ([]jiraIssue, error) {
+	var allIssues []jiraIssue
 	nextPageToken := ""
 
 	for {
-		reqBody := SearchRequest{
+		reqBody := jiraSearchRequest{
 			JQL:           jql,
 			MaxResults:    100,
 			Fields:        []string{"id", "key", "summary"},
@@ -142,7 +291,9 @@ func (jc *Client) searchIssuesWithJQL(jql string) ([]jira.Issue, error) {
 			return nil, fmt.Errorf("failed to create request: %v", err)
 		}
 
-		req.SetBasicAuth(jc.username, jc.apiToken)
+		if err := jc.auth.AuthenticateRequest(req); err != nil {
+			return nil, fmt.Errorf("failed to authenticate request: %v", err)
+		}
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Accept", "application/json")
 
@@ -160,7 +311,7 @@ func (jc *Client) searchIssuesWithJQL(jql string) ([]jira.Issue, error) {
 			return nil, fmt.Errorf("search failed with status %d: %s", resp.StatusCode, string(body))
 		}
 
-		var searchResp SearchResponse
+		var searchResp jiraSearchResponse
 		if err := json.Unmarshal(body, &searchResp); err != nil {
 			return nil, fmt.Errorf("failed to parse response: %v", err)
 		}
@@ -190,7 +341,7 @@ func (jc *Client) GetWorkLogs(startDate, endDate time.Time) ([]models.WorkLog, e
 	log.Printf("[JIRA] Fetching worklogs from %s to %s", startStr, endStr)
 	log.Printf("[JIRA] JQL Query: %s", jql)
 
-	// Search for issues using custom implementation with correct API endpoint
+	// Search for issues
 	allIssues, err := jc.searchIssuesWithJQL(jql)
 	if err != nil {
 		log.Printf("[JIRA] Error searching issues: %v", err)
@@ -235,24 +386,69 @@ func (jc *Client) GetWorkLogs(startDate, endDate time.Time) ([]models.WorkLog, e
 
 // getWorkLogsForIssue fetches work logs for a specific issue
 func (jc *Client) getWorkLogsForIssue(issueID, issueKey, issueSummary string, startDate, endDate time.Time) ([]models.WorkLog, error) {
-	// Get worklogs for the issue using issue ID (more reliable than key)
-	worklogRecord, _, err := jc.client.Issue.GetWorklogs(issueID)
-	if err != nil {
-		log.Printf("[JIRA] Error getting worklogs for issue %s (ID: %s): %v", issueKey, issueID, err)
-		return nil, err
+	var allWorklogs []jiraWorklogRecord
+	startAt := 0
+	maxResults := 1000
+
+	for {
+		url := fmt.Sprintf("%s/rest/api/3/issue/%s/worklog?startAt=%d&maxResults=%d", jc.baseURL, issueID, startAt, maxResults)
+		log.Printf("[JIRA] GET %s", url)
+
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create request: %v", err)
+		}
+
+		if err := jc.auth.AuthenticateRequest(req); err != nil {
+			return nil, fmt.Errorf("failed to authenticate request: %v", err)
+		}
+		req.Header.Set("Accept", "application/json")
+
+		resp, err := jc.httpClient.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("failed to execute request: %v", err)
+		}
+		defer resp.Body.Close()
+
+		body, _ := io.ReadAll(resp.Body)
+		log.Printf("[JIRA] Response status: %d", resp.StatusCode)
+
+		if resp.StatusCode != 200 {
+			log.Printf("[JIRA] Response body: %s", string(body))
+			return nil, fmt.Errorf("failed to get worklogs with status %d: %s", resp.StatusCode, string(body))
+		}
+
+		var worklogResp jiraWorklogResponse
+		if err := json.Unmarshal(body, &worklogResp); err != nil {
+			return nil, fmt.Errorf("failed to parse worklog response: %v", err)
+		}
+
+		allWorklogs = append(allWorklogs, worklogResp.Worklogs...)
+		log.Printf("[JIRA] Fetched %d worklogs (total: %d/%d)", len(worklogResp.Worklogs), len(allWorklogs), worklogResp.Total)
+
+		// Check if we've fetched all worklogs
+		if startAt+len(worklogResp.Worklogs) >= worklogResp.Total {
+			break
+		}
+
+		startAt += len(worklogResp.Worklogs)
 	}
 
-	log.Printf("[JIRA] Issue %s has %d total worklogs", issueKey, len(worklogRecord.Worklogs))
+	log.Printf("[JIRA] Issue %s has %d total worklogs", issueKey, len(allWorklogs))
 
 	// Filter and convert worklogs
 	var filtered []models.WorkLog
-	for _, wl := range worklogRecord.Worklogs {
-		// wl.Started is a *jira.Time type which embeds time.Time
-		if wl.Started == nil {
-			log.Printf("[JIRA] Skipping worklog with nil start time in issue %s", issueKey)
-			continue
+	for _, wl := range allWorklogs {
+		// Parse started time
+		started, err := time.Parse("2006-01-02T15:04:05.000-0700", wl.Started)
+		if err != nil {
+			// Try alternative format
+			started, err = time.Parse("2006-01-02T15:04:05.000Z", wl.Started)
+			if err != nil {
+				log.Printf("[JIRA] Skipping worklog with invalid start time in issue %s: %s", issueKey, wl.Started)
+				continue
+			}
 		}
-		started := time.Time(*wl.Started)
 
 		// Check if worklog is in date range
 		worklogDate := time.Date(started.Year(), started.Month(), started.Day(), 0, 0, 0, 0, time.UTC)
@@ -261,11 +457,11 @@ func (jc *Client) getWorkLogsForIssue(issueID, issueKey, issueSummary string, st
 
 		if !worklogDate.Before(startDateOnly) && !worklogDate.After(endDateOnly) {
 			// Check if worklog is by current user
-			if wl.Author != nil && wl.Author.AccountID == jc.AccountID {
+			if wl.Author.AccountID == jc.AccountID {
 				log.Printf("[JIRA] Including worklog: Issue=%s, Date=%s, Hours=%.2f, Author=%s",
 					issueKey, started.Format("2006-01-02"), float64(wl.TimeSpentSeconds)/3600.0, wl.Author.DisplayName)
 				filtered = append(filtered, mapJiraWorklogToWorkLog(&wl, issueKey, issueSummary, started))
-			} else if wl.Author != nil {
+			} else {
 				log.Printf("[JIRA] Skipping worklog (different author): Issue=%s, Author=%s (AccountID: %s)",
 					issueKey, wl.Author.DisplayName, wl.Author.AccountID)
 			}
@@ -279,10 +475,8 @@ func (jc *Client) getWorkLogsForIssue(issueID, issueKey, issueSummary string, st
 	return filtered, nil
 }
 
-// mapJiraWorklogToWorkLog converts a jira.WorklogRecord to our WorkLog
-func mapJiraWorklogToWorkLog(jiraWL *jira.WorklogRecord, issueKey, issueSummary string, started time.Time) models.WorkLog {
-	comment := jiraWL.Comment
-
+// mapJiraWorklogToWorkLog converts a jiraWorklogRecord to our WorkLog
+func mapJiraWorklogToWorkLog(jiraWL *jiraWorklogRecord, issueKey, issueSummary string, started time.Time) models.WorkLog {
 	return models.WorkLog{
 		ID:               jiraWL.ID,
 		IssueKey:         issueKey,
@@ -295,7 +489,7 @@ func mapJiraWorklogToWorkLog(jiraWL *jira.WorklogRecord, issueKey, issueSummary 
 			AccountID:    jiraWL.Author.AccountID,
 			EmailAddress: jiraWL.Author.EmailAddress,
 		},
-		Comment: comment,
+		Comment: jiraWL.Comment.String(),
 	}
 }
 
