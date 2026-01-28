@@ -389,6 +389,47 @@ h1 {
     transform: scale(1.05);
 }
 
+.refresh-btn {
+    background: #3a3a3a;
+    border: 1px solid #555;
+    color: #e0e0e0;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    padding: 0;
+    position: relative;
+}
+
+.refresh-btn:hover:not(.refreshing) {
+    background: #4a4a4a;
+    border-color: #4a9eff;
+    transform: scale(1.05);
+}
+
+.refresh-btn.refreshing {
+    cursor: wait;
+}
+
+.refresh-btn.refreshing span {
+    display: inline-block;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 .form-group {
     margin-bottom: 1rem;
 }
@@ -408,7 +449,228 @@ input[type="date"] {
     border: 1px solid #444;
     border-radius: 4px;
     color: #e0e0e0;
+    font-size: 1.2rem;
+    min-height: 48px;
+}
+
+/* Custom Date Picker for Worklog */
+.date-picker-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+#worklog-date-display {
+    flex: 1;
     font-size: 1rem;
+    padding: 0.75rem;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 6px;
+    color: #e0e0e0;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+#worklog-date-display:hover {
+    border-color: #555;
+    background: #333;
+}
+
+#worklog-date-display:focus {
+    outline: none;
+    border-color: #4a9eff;
+    box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.2);
+}
+
+.date-picker-btn {
+    background: linear-gradient(135deg, #4a9eff 0%, #3a8eef 100%);
+    border: none;
+    color: #fff;
+    width: 44px;
+    height: 44px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    padding: 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.date-picker-btn:hover {
+    background: linear-gradient(135deg, #5aaeff 0%, #4a9eff 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(74, 158, 255, 0.3);
+}
+
+.date-picker-btn:active {
+    transform: translateY(0);
+}
+
+.date-picker-popup {
+    position: fixed;
+    background: #1e1e1e;
+    border: 1px solid #4a9eff;
+    border-radius: 12px;
+    padding: 1rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(74, 158, 255, 0.1);
+    z-index: 10000;
+    min-width: 300px;
+    max-width: 340px;
+    animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.date-picker-popup.hidden {
+    display: none;
+}
+
+.date-picker-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #4a9eff;
+}
+
+.date-picker-nav {
+    background: linear-gradient(135deg, #4a9eff 0%, #3a8eef 100%);
+    border: none;
+    color: #fff;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    padding: 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    font-weight: bold;
+}
+
+.date-picker-nav:hover {
+    background: linear-gradient(135deg, #5aaeff 0%, #4a9eff 100%);
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(74, 158, 255, 0.4);
+}
+
+.date-picker-nav:active {
+    transform: scale(1.0);
+}
+
+#worklog-date-month-year {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.date-picker-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.date-picker-weekdays > div {
+    text-align: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #4a9eff;
+    padding: 0.5rem 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.date-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.5rem;
+}
+
+.date-picker-day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #2a2a2a 0%, #333 100%);
+    border: 2px solid transparent;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #e0e0e0;
+    transition: all 0.2s;
+    min-height: 36px;
+    font-weight: 500;
+    position: relative;
+}
+
+.date-picker-day:hover:not(.empty):not(.selected) {
+    background: linear-gradient(135deg, #3a3a3a 0%, #4a4a4a 100%);
+    border-color: #4a9eff;
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(74, 158, 255, 0.3);
+}
+
+.date-picker-day.empty {
+    background: transparent;
+    border: none;
+    cursor: default;
+}
+
+.date-picker-day.weekend {
+    background: linear-gradient(135deg, #2a1e1e 0%, #331e1e 100%);
+    color: #999;
+}
+
+.date-picker-day.weekend:hover:not(.empty):not(.selected) {
+    background: linear-gradient(135deg, #3a2a2a 0%, #4a2a2a 100%);
+}
+
+.date-picker-day.today {
+    background: linear-gradient(135deg, #4a9eff 0%, #3a8eef 100%);
+    color: #fff;
+    font-weight: 700;
+    border-color: #4a9eff;
+    box-shadow: 0 2px 8px rgba(74, 158, 255, 0.4);
+}
+
+.date-picker-day.today:hover {
+    background: linear-gradient(135deg, #5aaeff 0%, #4a9eff 100%);
+    transform: scale(1.1);
+}
+
+.date-picker-day.selected {
+    background: linear-gradient(135deg, #66bb6a 0%, #56ab5a 100%);
+    color: #fff;
+    border-color: #66bb6a;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(102, 187, 106, 0.4);
+    transform: scale(1.05);
+}
+
+.date-picker-day.selected:hover {
+    background: linear-gradient(135deg, #76cb7a 0%, #66bb6a 100%);
+    transform: scale(1.1);
 }
 
 input:focus {
@@ -638,4 +900,165 @@ button:hover {
     border-radius: 50%;
     border: 2px solid #444;
     flex-shrink: 0;
+}
+
+/* Modal Styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal.hidden {
+    display: none;
+}
+
+.modal-content {
+    background: #2a2a2a;
+    border-radius: 8px;
+    padding: 1rem;
+    width: 90%;
+    max-width: 450px;
+    max-height: 85vh;
+    overflow: hidden;
+    border: 1px solid #444;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+}
+
+#add-worklog-form {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+    padding-right: 0.25rem;
+}
+
+#add-worklog-form .form-group {
+    margin-bottom: 0.75rem;
+}
+
+#add-worklog-form label {
+    font-size: 0.9rem;
+    margin-bottom: 0.35rem;
+}
+
+#add-worklog-form input[type="text"] {
+    padding: 0.5rem;
+    font-size: 0.95rem;
+}
+
+#add-worklog-form small.help-text {
+    font-size: 0.75rem;
+    margin-top: 0.2rem;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #444;
+    flex-shrink: 0;
+}
+
+.modal-header h2 {
+    margin: 0;
+    color: #fff;
+    font-size: 1.2rem;
+}
+
+.modal-header .close-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 1.2rem;
+}
+
+textarea {
+    width: 100%;
+    padding: 0.5rem;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 4px;
+    color: #e0e0e0;
+    font-size: 0.9rem;
+    font-family: inherit;
+    resize: none;
+    min-height: 60px;
+    max-height: 80px;
+}
+
+textarea:focus {
+    outline: none;
+    border-color: #4a9eff;
+}
+
+input[type="time"] {
+    width: 100%;
+    padding: 0.5rem;
+    background: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 4px;
+    color: #e0e0e0;
+    font-size: 0.95rem;
+}
+
+input[type="time"]:focus {
+    outline: none;
+    border-color: #4a9eff;
+}
+
+small.help-text {
+    display: block;
+    margin-top: 0.25rem;
+    color: #999;
+    font-size: 0.85rem;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    margin-top: 0.75rem;
+    flex-shrink: 0;
+    padding-top: 0.5rem;
+    border-top: 1px solid #444;
+}
+
+.modal-buttons button {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+}
+
+.modal-buttons button[type="button"] {
+    background: #555;
+}
+
+.modal-buttons button[type="button"]:hover {
+    background: #666;
+}
+
+.error-message {
+    background: #4a1e1e;
+    border: 1px solid #cc4444;
+    border-radius: 4px;
+    color: #ff8888;
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.error-message.hidden {
+    display: none;
 }

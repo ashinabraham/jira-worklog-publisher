@@ -92,12 +92,65 @@
             <div class="header">
                 <h1>Work Log Calendar</h1>
                 <div class="header-buttons">
-                    <button id="settings-btn-calendar" class="settings-btn" title="Settings">⚙️</button>
+                    <button id="refresh-btn-calendar" class="refresh-btn" title="Refresh"><span>🔄</span></button>
                     <button id="add-worklog-btn">Add Worklog</button>
                     <button id="close-btn">×</button>
                 </div>
             </div>
             <div id="calendar-table"></div>
+        </div>
+
+        <!-- Add Worklog Modal -->
+        <div id="add-worklog-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Add Worklog</h2>
+                    <button id="close-worklog-modal" class="close-btn" title="Close">×</button>
+                </div>
+                <form id="add-worklog-form">
+                    <div class="form-group">
+                        <label for="worklog-issue-key">Issue Key</label>
+                        <input type="text" id="worklog-issue-key" placeholder="PROJECT-123" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="worklog-date">Date</label>
+                        <div class="date-picker-wrapper">
+                            <input type="text" id="worklog-date-display" readonly placeholder="Select a date">
+                            <input type="hidden" id="worklog-date" required>
+                            <button type="button" id="worklog-date-picker-btn" class="date-picker-btn">📅</button>
+                        </div>
+                        <div id="worklog-date-picker" class="date-picker-popup hidden">
+                            <div class="date-picker-header">
+                                <button type="button" class="date-picker-nav" id="worklog-date-prev">‹</button>
+                                <span id="worklog-date-month-year"></span>
+                                <button type="button" class="date-picker-nav" id="worklog-date-next">›</button>
+                            </div>
+                            <div class="date-picker-weekdays">
+                                <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                            </div>
+                            <div id="worklog-date-grid" class="date-picker-grid"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="worklog-time">Time</label>
+                        <input type="time" id="worklog-time" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="worklog-duration">Duration</label>
+                        <input type="text" id="worklog-duration" placeholder="2h 30m or 150m" required>
+                        <small class="help-text">Format: 2h 30m, 150m, 1.5h, etc.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="worklog-comment">Comment</label>
+                        <textarea id="worklog-comment" rows="3" placeholder="What did you work on?"></textarea>
+                    </div>
+                    <div id="worklog-error" class="error-message hidden"></div>
+                    <div class="modal-buttons">
+                        <button type="button" id="cancel-worklog-btn">Cancel</button>
+                        <button type="submit">Add Worklog</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
     <script src="wails.js"></script>

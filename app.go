@@ -98,3 +98,18 @@ func (a *App) GetWorkLogs(startDateStr, endDateStr string) ([]models.WorkLog, er
 	
 	return a.jiraClient.GetWorkLogs(startDate, endDate)
 }
+
+// AddWorklog creates a new worklog entry for the given issue
+func (a *App) AddWorklog(issueKey string, comment string, started string, timeSpentSeconds int) (*models.WorklogResponse, error) {
+	if a.jiraClient == nil {
+		return nil, fmt.Errorf("not authenticated")
+	}
+	
+	req := models.WorklogRequest{
+		Comment:          comment,
+		Started:          started,
+		TimeSpentSeconds: timeSpentSeconds,
+	}
+	
+	return a.jiraClient.CreateWorklog(issueKey, req)
+}

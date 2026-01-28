@@ -542,3 +542,98 @@ func AggregateWorkLogs(workLogs []models.WorkLog) map[string]*models.DayWorkSumm
 
 	return summary
 }
+
+// CreateWorklog creates a new worklog entry for the given issue
+func (jc *Client) CreateWorklog(issueKey string, req models.WorklogRequest) (*models.WorklogResponse, error) {
+	url := fmt.Sprintf("%s/rest/api/3/issue/%s/worklog", jc.baseURL, issueKey)
+	log.Printf("[JIRA] POST %s", url)
+
+	// Marshal request body - Jira API v3 expects comment in Atlassian Document Format (ADF)
+	worklogBody := map[string]interface{}{
+		"timeSpentSeconds": req.TimeSpentSeconds,
+		"started":          req.Started,
+	}
+	
+	// Format comment in Atlassian Document Format if provided
+	if req.Comment != "" {
+		worklogBody["comment"] = map[string]interface{}{
+			"type":    "doc",
+			"version": 1,
+			"content": []map[string]interface{}{
+				{
+					"type": "paragraph",
+					"content": []map[string]interface{}{
+						{
+							"type": "text",
+							"text": req.Comment,
+						},
+					},
+				},
+			},
+		}
+	}
+	
+	jsonData, err := json.Marshal(worklogBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal worklog request: %v", err)
+	}
+	
+	log.Printf("[JIRA] Request body: %s", string(jsonData))
+
+	// Create request
+	httpReq, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %v", err)
+	}
+
+	// Authenticate request
+	if err := jc.auth.AuthenticateRequest(httpReq); err != nil {
+		return nil, fmt.Errorf("failed to authenticate request: %v", err)
+	}
+
+	// Set headers
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Accept", "application/json")
+
+	// Execute request
+	resp, err := jc.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	log.Printf("[JIRA] Response status: %d", resp.StatusCode)
+
+	if resp.StatusCode != http.StatusCreated {
+		log.Printf("[JIRA] Response body: %s", string(body))
+		
+		// Try to parse Jira error response
+		var jiraError struct {
+			ErrorMessages []string          `json:"errorMessages"`
+			Errors        map[string]string `json:"errors"`
+		}
+		if err := json.Unmarshal(body, &jiraError); err == nil {
+			if len(jiraError.ErrorMessages) > 0 {
+				return nil, fmt.Errorf("%s", jiraError.ErrorMessages[0])
+			}
+			if len(jiraError.Errors) > 0 {
+				for _, msg := range jiraError.Errors {
+					return nil, fmt.Errorf("%s", msg)
+				}
+			}
+		}
+		
+		// Fallback to generic error
+		return nil, fmt.Errorf("failed to create worklog: HTTP %d - %s", resp.StatusCode, string(body))
+	}
+
+	// Parse response
+	var worklogResp models.WorklogResponse
+	if err := json.Unmarshal(body, &worklogResp); err != nil {
+		return nil, fmt.Errorf("failed to parse worklog response: %v", err)
+	}
+
+	log.Printf("[JIRA] Worklog created successfully: ID=%s", worklogResp.ID)
+	return &worklogResp, nil
+}

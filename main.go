@@ -18,7 +18,7 @@ func main() {
 
 	// Create application with options
 	err := wails.Run(&options.App{
-		Title:     "Jira Work Calendar",
+		Title:     "JIRA Work Calendar",
 		Width:     1200,
 		Height:    700,
 		MinWidth:  1200,

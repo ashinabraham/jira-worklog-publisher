@@ -371,11 +371,364 @@ function setupCalendarButtons() {
     document.getElementById('close-btn').addEventListener('click', () => {
         showDateScreen();
     });
+    
+    // Setup Add Worklog button
+    document.getElementById('add-worklog-btn').addEventListener('click', () => {
+        showAddWorklogModal();
+    });
+    
+    // Setup modal close buttons
+    document.getElementById('close-worklog-modal').addEventListener('click', () => {
+        hideAddWorklogModal();
+    });
+    
+    document.getElementById('cancel-worklog-btn').addEventListener('click', () => {
+        hideAddWorklogModal();
+    });
+    
+    // Setup worklog form
+    setupWorklogForm();
+}
+
+// Worklog date picker state
+let worklogDatePickerState = {
+    currentDate: new Date(),
+    selectedDate: null
+};
+
+function showAddWorklogModal() {
+    const modal = document.getElementById('add-worklog-modal');
+    modal.classList.remove('hidden');
+    
+    // Clear any previous errors
+    hideWorklogError();
+    
+    // Set default date to today
+    const today = new Date();
+    worklogDatePickerState.currentDate = new Date(today);
+    worklogDatePickerState.selectedDate = new Date(today);
+    
+    // Update date picker display
+    updateWorklogDateDisplay();
+    initWorklogDatePicker();
+    
+    // Set default time to 9:30 AM
+    document.getElementById('worklog-time').value = '09:30';
+    
+    // Clear form
+    document.getElementById('worklog-issue-key').value = '';
+    document.getElementById('worklog-duration').value = '';
+    document.getElementById('worklog-comment').value = '';
+}
+
+function showWorklogError(message) {
+    const errorDiv = document.getElementById('worklog-error');
+    if (errorDiv) {
+        errorDiv.textContent = message;
+        errorDiv.classList.remove('hidden');
+        // Scroll to error
+        errorDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+}
+
+function hideWorklogError() {
+    const errorDiv = document.getElementById('worklog-error');
+    if (errorDiv) {
+        errorDiv.textContent = '';
+        errorDiv.classList.add('hidden');
+    }
+}
+
+let worklogDatePickerCloseHandler = null;
+let worklogDatePickerInitialized = false;
+
+function initWorklogDatePicker() {
+    // Only initialize once
+    if (worklogDatePickerInitialized) {
+        updateWorklogDatePicker();
+        return;
+    }
+    
+    // Setup date picker button
+    const pickerBtn = document.getElementById('worklog-date-picker-btn');
+    const pickerPopup = document.getElementById('worklog-date-picker');
+    const displayInput = document.getElementById('worklog-date-display');
+    
+    const togglePicker = () => {
+        const isHidden = pickerPopup.classList.contains('hidden');
+        pickerPopup.classList.toggle('hidden');
+        if (isHidden) {
+            // Position the popup relative to the button
+            const btnRect = pickerBtn.getBoundingClientRect();
+            const wrapperRect = pickerBtn.closest('.date-picker-wrapper').getBoundingClientRect();
+            pickerPopup.style.top = `${btnRect.bottom + window.scrollY + 8}px`;
+            pickerPopup.style.left = `${wrapperRect.left + window.scrollX}px`;
+            pickerPopup.style.width = `${Math.max(300, wrapperRect.width)}px`;
+            
+            updateWorklogDatePicker();
+            // Remove old handler if exists
+            if (worklogDatePickerCloseHandler) {
+                document.removeEventListener('click', worklogDatePickerCloseHandler);
+            }
+            // Add click outside handler
+            worklogDatePickerCloseHandler = (e) => {
+                if (!pickerPopup.contains(e.target) && e.target !== pickerBtn && e.target !== displayInput) {
+                    pickerPopup.classList.add('hidden');
+                    document.removeEventListener('click', worklogDatePickerCloseHandler);
+                    worklogDatePickerCloseHandler = null;
+                }
+            };
+            setTimeout(() => {
+                document.addEventListener('click', worklogDatePickerCloseHandler);
+            }, 0);
+        } else {
+            // Remove handler when closing
+            if (worklogDatePickerCloseHandler) {
+                document.removeEventListener('click', worklogDatePickerCloseHandler);
+                worklogDatePickerCloseHandler = null;
+            }
+        }
+    };
+    
+    pickerBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        togglePicker();
+    });
+    
+    displayInput.addEventListener('click', () => {
+        if (pickerPopup.classList.contains('hidden')) {
+            togglePicker();
+        }
+    });
+    
+    // Setup navigation
+    document.getElementById('worklog-date-prev').addEventListener('click', (e) => {
+        e.stopPropagation();
+        worklogDatePickerState.currentDate.setMonth(worklogDatePickerState.currentDate.getMonth() - 1);
+        updateWorklogDatePicker();
+    });
+    
+    document.getElementById('worklog-date-next').addEventListener('click', (e) => {
+        e.stopPropagation();
+        worklogDatePickerState.currentDate.setMonth(worklogDatePickerState.currentDate.getMonth() + 1);
+        updateWorklogDatePicker();
+    });
+    
+    worklogDatePickerInitialized = true;
+    updateWorklogDatePicker();
+}
+
+function updateWorklogDatePicker() {
+    const grid = document.getElementById('worklog-date-grid');
+    grid.innerHTML = '';
+    
+    const year = worklogDatePickerState.currentDate.getFullYear();
+    const month = worklogDatePickerState.currentDate.getMonth();
+    
+    // Update month/year display
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'];
+    document.getElementById('worklog-date-month-year').textContent = 
+        `${monthNames[month]} ${year}`;
+    
+    // Get first day of month and number of days
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
+    
+    // Add empty cells for days before month starts
+    for (let i = 0; i < startingDayOfWeek; i++) {
+        const emptyCell = document.createElement('div');
+        emptyCell.className = 'date-picker-day empty';
+        grid.appendChild(emptyCell);
+    }
+    
+    // Add cells for each day of the month
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month, day);
+        const cell = document.createElement('div');
+        cell.className = 'date-picker-day';
+        cell.textContent = day;
+        
+        // Check if today
+        if (date.getTime() === today.getTime()) {
+            cell.classList.add('today');
+        }
+        
+        // Check if selected
+        if (worklogDatePickerState.selectedDate) {
+            const selected = new Date(worklogDatePickerState.selectedDate);
+            selected.setHours(0, 0, 0, 0);
+            if (date.getTime() === selected.getTime()) {
+                cell.classList.add('selected');
+            }
+        }
+        
+        // Check if weekend
+        const dayOfWeek = date.getDay();
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+            cell.classList.add('weekend');
+        }
+        
+        // Add click handler
+        cell.addEventListener('click', (e) => {
+            e.stopPropagation();
+            worklogDatePickerState.selectedDate = new Date(date);
+            updateWorklogDateDisplay();
+            const pickerPopup = document.getElementById('worklog-date-picker');
+            pickerPopup.classList.add('hidden');
+            // Remove click outside handler
+            if (worklogDatePickerCloseHandler) {
+                document.removeEventListener('click', worklogDatePickerCloseHandler);
+                worklogDatePickerCloseHandler = null;
+            }
+        });
+        
+        grid.appendChild(cell);
+    }
+    
+    // Add empty cells at the end to always have 42 cells (6 rows)
+    const cellsAdded = startingDayOfWeek + daysInMonth;
+    const remainingCells = 42 - cellsAdded;
+    for (let i = 0; i < remainingCells; i++) {
+        const emptyCell = document.createElement('div');
+        emptyCell.className = 'date-picker-day empty';
+        grid.appendChild(emptyCell);
+    }
+}
+
+function updateWorklogDateDisplay() {
+    if (worklogDatePickerState.selectedDate) {
+        const date = worklogDatePickerState.selectedDate;
+        document.getElementById('worklog-date-display').value = formatDateDisplay(date);
+        document.getElementById('worklog-date').value = formatDate(date);
+    } else {
+        // If no date selected, clear the display
+        document.getElementById('worklog-date-display').value = '';
+        document.getElementById('worklog-date').value = '';
+    }
+}
+
+function hideAddWorklogModal() {
+    const modal = document.getElementById('add-worklog-modal');
+    modal.classList.add('hidden');
+}
+
+function setupWorklogForm() {
+    const form = document.getElementById('add-worklog-form');
+    
+    // Clear errors when user starts typing in any field
+    const formInputs = form.querySelectorAll('input, textarea');
+    formInputs.forEach(input => {
+        input.addEventListener('input', () => {
+            hideWorklogError();
+        });
+    });
+    
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const issueKey = document.getElementById('worklog-issue-key').value.trim().toUpperCase();
+        const date = document.getElementById('worklog-date').value;
+        const time = document.getElementById('worklog-time').value;
+        const duration = document.getElementById('worklog-duration').value.trim();
+        const comment = document.getElementById('worklog-comment').value.trim();
+        
+        // Parse duration to seconds
+        const timeSpentSeconds = parseDuration(duration);
+        if (timeSpentSeconds === 0) {
+            alert('Invalid duration format. Please use formats like: 2h 30m, 150m, 1.5h');
+            return;
+        }
+        
+        // Format date/time for Jira API (ISO 8601 with timezone)
+        const dateTime = new Date(`${date}T${time}`);
+        const started = formatDateTimeForJira(dateTime);
+        
+        // Clear any previous errors
+        hideWorklogError();
+        
+        try {
+            await app.AddWorklog(issueKey, comment, started, timeSpentSeconds);
+            
+            // Close modal immediately - do this synchronously
+            const modal = document.getElementById('add-worklog-modal');
+            if (modal) {
+                modal.classList.add('hidden');
+            }
+            
+            // Clear form
+            form.reset();
+            
+            // Refresh the calendar to show the new worklog (async, don't wait)
+            refreshCalendar().catch(err => {
+                console.error('Calendar refresh failed:', err);
+            });
+            
+            // Show success message after a short delay to allow UI to update
+            setTimeout(() => {
+                alert('Worklog added successfully!');
+            }, 50);
+        } catch (err) {
+            // Show error in the form
+            showWorklogError(err.message || err.toString());
+        }
+    });
+}
+
+function parseDuration(duration) {
+    if (!duration) return 0;
+    
+    duration = duration.toLowerCase().trim();
+    let totalSeconds = 0;
+    
+    // Parse hours and minutes (e.g., "2h 30m", "2h30m", "2.5h")
+    const hourMatch = duration.match(/(\d+(?:\.\d+)?)\s*h/);
+    if (hourMatch) {
+        totalSeconds += parseInt(parseFloat(hourMatch[1]) * 3600);
+    }
+    
+    const minuteMatch = duration.match(/(\d+)\s*m/);
+    if (minuteMatch) {
+        totalSeconds += parseInt(minuteMatch[1]) * 60;
+    }
+    
+    // If no units found, try parsing as just a number (assume minutes)
+    if (totalSeconds === 0) {
+        const numMatch = duration.match(/^(\d+(?:\.\d+)?)$/);
+        if (numMatch) {
+            // If it's a decimal, assume hours; otherwise assume minutes
+            if (duration.includes('.')) {
+                totalSeconds = parseInt(parseFloat(numMatch[1]) * 3600);
+            } else {
+                totalSeconds = parseInt(numMatch[1]) * 60;
+            }
+        }
+    }
+    
+    return totalSeconds;
+}
+
+function formatDateTimeForJira(date) {
+    // Format as ISO 8601: "2024-01-15T10:00:00.000+0000"
+    // For simplicity, we'll use UTC offset 0000
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.000+0000`;
 }
 
 function setupSettingsButtons() {
     const settingsBtnDate = document.getElementById('settings-btn-date');
-    const settingsBtnCalendar = document.getElementById('settings-btn-calendar');
+    const refreshBtnCalendar = document.getElementById('refresh-btn-calendar');
     
     if (settingsBtnDate) {
         settingsBtnDate.addEventListener('click', () => {
@@ -383,10 +736,42 @@ function setupSettingsButtons() {
         });
     }
     
-    if (settingsBtnCalendar) {
-        settingsBtnCalendar.addEventListener('click', () => {
-            showConfigScreen();
+    if (refreshBtnCalendar) {
+        refreshBtnCalendar.addEventListener('click', async () => {
+            await refreshCalendar();
         });
+    }
+}
+
+async function refreshCalendar() {
+    // Only refresh if we're on the calendar screen and have a date range
+    const calendarScreen = document.getElementById('calendar-screen');
+    if (!calendarScreen || calendarScreen.classList.contains('hidden')) {
+        return;
+    }
+    
+    if (!currentCalendarDateRange.startDate || !currentCalendarDateRange.endDate) {
+        console.log('Cannot refresh: date range not set');
+        return;
+    }
+    
+    // Show loading animation
+    const refreshBtn = document.getElementById('refresh-btn-calendar');
+    if (refreshBtn) {
+        refreshBtn.classList.add('refreshing');
+    }
+    
+    try {
+        const workLogs = await app.GetWorkLogs(currentCalendarDateRange.startDate, currentCalendarDateRange.endDate);
+        showCalendarScreen(workLogs, currentCalendarDateRange.startDate, currentCalendarDateRange.endDate);
+    } catch (err) {
+        console.error('Failed to refresh calendar:', err);
+        alert('Failed to refresh calendar: ' + err);
+    } finally {
+        // Remove loading animation
+        if (refreshBtn) {
+            refreshBtn.classList.remove('refreshing');
+        }
     }
 }
 
@@ -467,10 +852,20 @@ async function loadUserInfo() {
     }
 }
 
+// Store current date range for refresh functionality
+let currentCalendarDateRange = {
+    startDate: null,
+    endDate: null
+};
+
 function showCalendarScreen(workLogs, startDate, endDate) {
     document.getElementById('config-screen').classList.add('hidden');
     document.getElementById('date-screen').classList.add('hidden');
     document.getElementById('calendar-screen').classList.remove('hidden');
+    
+    // Store current date range for refresh
+    currentCalendarDateRange.startDate = startDate;
+    currentCalendarDateRange.endDate = endDate;
     
     renderCalendar(workLogs, startDate, endDate);
 }
