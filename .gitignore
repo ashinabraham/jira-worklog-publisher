@@ -35,3 +35,22 @@ Thumbs.db
 
 # Log files
 *.log
+
+# Wails build directories
+build/
+dist/
+
+# Wails generated frontend files
+frontend/wailsjs/
+
+# Wails app bundles
+*.app
+*.dmg
+*.deb
+*.rpm
+*.msi
+*.exe
+
+# Temporary files
+*.tmp
+*.temp
