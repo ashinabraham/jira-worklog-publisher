@@ -4,7 +4,7 @@
 *.dll
 *.so
 *.dylib
-jira-calendar
+jira-worklog-publisher
 
 # Test binary, built with `go test -c`
 *.test
@@ -30,8 +30,14 @@ vendor/
 .DS_Store
 Thumbs.db
 
-# Config files (may contain credentials)
-.jira-calendar-config.json
+# Config and credential files (never commit)
+.jira-worklog-publisher-config.json
+.env
+.env.*
+!.env.example
+*.pem
+*credentials*
+*secret*
 
 # Log files
 *.log

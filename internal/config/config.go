@@ -1,5 +1,5 @@
 // Package config loads and saves Jira configuration to a JSON file
-// in the user's home directory (~/.jira-calendar-config.json).
+// in the user's home directory (~/.jira-worklog-publisher-config.json).
 package config
 
 import (
@@ -8,14 +8,14 @@ import (
 	"log"
 	"os"
 
-	"jira-calendar/internal/models"
+	"jira-worklog-publisher/internal/models"
 )
 
-// Load reads the Jira configuration from ~/.jira-calendar-config.json.
+// Load reads the Jira configuration from ~/.jira-worklog-publisher-config.json.
 // Returns an empty JiraConfig if the file is missing or invalid.
 func Load() models.JiraConfig {
 	homeDir, _ := os.UserHomeDir()
-	configPath := fmt.Sprintf("%s/.jira-calendar-config.json", homeDir)
+	configPath := fmt.Sprintf("%s/.jira-worklog-publisher-config.json", homeDir)
 
 	log.Printf("[CONFIG] Loading config from: %s", configPath)
 
@@ -35,10 +35,10 @@ func Load() models.JiraConfig {
 	return cfg
 }
 
-// Save writes the Jira configuration to ~/.jira-calendar-config.json with mode 0600.
+// Save writes the Jira configuration to ~/.jira-worklog-publisher-config.json with mode 0600.
 func Save(cfg models.JiraConfig) error {
 	homeDir, _ := os.UserHomeDir()
-	configPath := fmt.Sprintf("%s/.jira-calendar-config.json", homeDir)
+	configPath := fmt.Sprintf("%s/.jira-worklog-publisher-config.json", homeDir)
 
 	log.Printf("[CONFIG] Saving config to: %s", configPath)
 	log.Printf("[CONFIG] BaseURL: %s, Username: %s", cfg.BaseURL, cfg.Username)
@@ -49,6 +49,7 @@ func Save(cfg models.JiraConfig) error {
 		return err
 	}
 
+	// Config file contains API token; restrict to owner only (0600).
 	err = os.WriteFile(configPath, data, 0600)
 	if err != nil {
 		log.Printf("[CONFIG] Error writing config file: %v", err)

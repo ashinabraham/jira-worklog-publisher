@@ -1,7 +1,7 @@
 {
   "$schema": "https://wails.io/schemas/config.v2.json",
-  "name": "JIRA Work Calendar",
-  "outputfilename": "jira-calendar",
+  "name": "JIRA Worklog Publisher",
+  "outputfilename": "jira-worklog-publisher",
   "icon": "appicon.icns",
   "frontend": {
     "dir": "./frontend/dist",

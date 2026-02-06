@@ -2,7 +2,7 @@
 # Post-build script to ensure the correct icon is embedded in the app bundle
 # Wails seems to use a default iconfile.icns instead of appicon.icns
 
-APP_BUNDLE="build/bin/JIRA Work Calendar.app"
+APP_BUNDLE="build/bin/JIRA Worklog Publisher.app"
 ICON_SOURCE="appicon.icns"
 ICON_TARGET="${APP_BUNDLE}/Contents/Resources/iconfile.icns"
 

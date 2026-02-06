@@ -1,4 +1,4 @@
-// Package main is the entry point for the JIRA Work Calendar desktop application.
+// Package main is the entry point for the JIRA Worklog Publisher desktop application.
 // It initializes the Wails runtime, embeds frontend assets, and runs the app window.
 package main
 
@@ -11,6 +11,7 @@ import (
 )
 
 // assets embeds the frontend/dist directory (HTML, CSS, JS) into the binary.
+//
 //go:embed all:frontend/dist
 var assets embed.FS
 
@@ -20,7 +21,7 @@ func main() {
 	app := NewApp()
 
 	err := wails.Run(&options.App{
-		Title:     "JIRA Work Calendar",
+		Title:     "JIRA Worklog Publisher",
 		Width:     1200,
 		Height:    700,
 		MinWidth:  1200,

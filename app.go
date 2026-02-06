@@ -8,9 +8,9 @@ import (
 	"log"
 	"time"
 
-	"jira-calendar/internal/config"
-	"jira-calendar/internal/jira"
-	"jira-calendar/internal/models"
+	"jira-worklog-publisher/internal/config"
+	"jira-worklog-publisher/internal/jira"
+	"jira-worklog-publisher/internal/models"
 )
 
 // App holds the Wails app context and the Jira client used by bound methods.
@@ -60,7 +60,7 @@ func (a *App) SaveConfig(cfg models.JiraConfig) error {
 		return err
 	}
 	a.config = cfg
-	
+
 	// Create basic auth and Jira client
 	auth := jira.NewBasicAuth(cfg.Username, cfg.APIToken)
 	client, err := jira.NewClient(cfg.BaseURL, auth)
@@ -68,7 +68,7 @@ func (a *App) SaveConfig(cfg models.JiraConfig) error {
 		return err
 	}
 	a.jiraClient = client
-	
+
 	return nil
 }
 
@@ -78,7 +78,7 @@ func (a *App) GetUserInfo() (map[string]interface{}, error) {
 	if a.jiraClient == nil {
 		return nil, fmt.Errorf("not authenticated")
 	}
-	
+
 	return a.jiraClient.GetUserInfo()
 }
 
@@ -87,17 +87,17 @@ func (a *App) GetWorkLogs(startDateStr, endDateStr string) ([]models.WorkLog, er
 	if a.jiraClient == nil {
 		return nil, fmt.Errorf("not authenticated")
 	}
-	
+
 	startDate, err := time.Parse("2006-01-02", startDateStr)
 	if err != nil {
 		return nil, fmt.Errorf("invalid start date: %v", err)
 	}
-	
+
 	endDate, err := time.Parse("2006-01-02", endDateStr)
 	if err != nil {
 		return nil, fmt.Errorf("invalid end date: %v", err)
 	}
-	
+
 	return a.jiraClient.GetWorkLogs(startDate, endDate)
 }
 
@@ -106,12 +106,12 @@ func (a *App) AddWorklog(issueKey string, comment string, started string, timeSp
 	if a.jiraClient == nil {
 		return nil, fmt.Errorf("not authenticated")
 	}
-	
+
 	req := models.WorklogRequest{
 		Comment:          comment,
 		Started:          started,
 		TimeSpentSeconds: timeSpentSeconds,
 	}
-	
+
 	return a.jiraClient.CreateWorklog(issueKey, req)
 }

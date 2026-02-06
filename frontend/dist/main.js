@@ -1,5 +1,5 @@
 /**
- * JIRA Work Calendar – Frontend
+ * JIRA Worklog Publisher – Frontend
  *
  * Uses Wails bindings (window.go.main.App) to call backend methods:
  * - GetConfig, SaveConfig: Jira configuration

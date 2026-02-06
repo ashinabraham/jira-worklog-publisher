@@ -1,4 +1,4 @@
-module jira-calendar
+module jira-worklog-publisher
 
 go 1.24.0
 

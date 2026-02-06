@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"jira-calendar/internal/models"
+	"jira-worklog-publisher/internal/models"
 )
 
 // Authenticator is the interface for Jira authentication (e.g. BasicAuth, future OAuth).
@@ -75,9 +75,9 @@ type jiraUser struct {
 }
 
 type jiraIssue struct {
-	ID     string       `json:"id"`
-	Key    string       `json:"key"`
-	Fields jiraFields   `json:"fields"`
+	ID     string     `json:"id"`
+	Key    string     `json:"key"`
+	Fields jiraFields `json:"fields"`
 }
 
 type jiraFields struct {
@@ -100,19 +100,19 @@ func (c *jiraComment) String() string {
 	if len(c.raw) == 0 {
 		return ""
 	}
-	
+
 	// Try as string first
 	var str string
 	if err := json.Unmarshal(c.raw, &str); err == nil {
 		return str
 	}
-	
+
 	// Try as rich text object (Atlassian Document Format)
 	var richText struct {
 		Type    string `json:"type"`
 		Content []struct {
-			Type string `json:"type"`
-			Text string `json:"text"`
+			Type    string `json:"type"`
+			Text    string `json:"text"`
 			Content []struct {
 				Type string `json:"type"`
 				Text string `json:"text"`
@@ -136,7 +136,7 @@ func (c *jiraComment) String() string {
 		}
 		return text.String()
 	}
-	
+
 	return ""
 }
 
@@ -150,10 +150,10 @@ type jiraWorklogRecord struct {
 }
 
 type jiraWorklogResponse struct {
-	Worklogs []jiraWorklogRecord `json:"worklogs"`
-	MaxResults int               `json:"maxResults"`
-	StartAt    int               `json:"startAt"`
-	Total      int               `json:"total"`
+	Worklogs   []jiraWorklogRecord `json:"worklogs"`
+	MaxResults int                 `json:"maxResults"`
+	StartAt    int                 `json:"startAt"`
+	Total      int                 `json:"total"`
 }
 
 type jiraSearchRequest struct {
@@ -557,7 +557,7 @@ func (jc *Client) CreateWorklog(issueKey string, req models.WorklogRequest) (*mo
 		"timeSpentSeconds": req.TimeSpentSeconds,
 		"started":          req.Started,
 	}
-	
+
 	// Format comment in Atlassian Document Format if provided
 	if req.Comment != "" {
 		worklogBody["comment"] = map[string]interface{}{
@@ -576,12 +576,12 @@ func (jc *Client) CreateWorklog(issueKey string, req models.WorklogRequest) (*mo
 			},
 		}
 	}
-	
+
 	jsonData, err := json.Marshal(worklogBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal worklog request: %v", err)
 	}
-	
+
 	log.Printf("[JIRA] Request body: %s", string(jsonData))
 
 	// Create request
@@ -611,7 +611,7 @@ func (jc *Client) CreateWorklog(issueKey string, req models.WorklogRequest) (*mo
 
 	if resp.StatusCode != http.StatusCreated {
 		log.Printf("[JIRA] Response body: %s", string(body))
-		
+
 		// Try to parse Jira error response
 		var jiraError struct {
 			ErrorMessages []string          `json:"errorMessages"`
@@ -627,7 +627,7 @@ func (jc *Client) CreateWorklog(issueKey string, req models.WorklogRequest) (*mo
 				}
 			}
 		}
-		
+
 		// Fallback to generic error
 		return nil, fmt.Errorf("failed to create worklog: HTTP %d - %s", resp.StatusCode, string(body))
 	}

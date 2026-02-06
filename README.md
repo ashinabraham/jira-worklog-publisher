@@ -1,10 +1,10 @@
-# JIRA Work Calendar
+# JIRA Worklog Publisher
 
 A desktop application for viewing Jira work logs in a calendar view and adding new work log entries. Built with [Wails v2](https://wails.io/) (Go backend + HTML/CSS/JS frontend).
 
 ## Features
 
-- **Jira configuration** – Store Jira base URL, username, and API token (saved in `~/.jira-calendar-config.json`)
+- **Jira configuration** – Store Jira base URL, username, and API token (saved in `~/.jira-worklog-publisher-config.json`)
 - **User info** – Display current user details (avatar, timezone, locale, etc.) from Jira
 - **Date range calendar** – Select start/end dates with a calendar widget and load work logs
 - **Work log calendar view** – Table of tickets with hours per date, weekend highlighting, and totals
@@ -31,7 +31,7 @@ wails dev
 # Current platform (e.g. macOS)
 wails build
 
-# macOS app bundle (output: build/bin/JIRA Work Calendar.app)
+# macOS app bundle (output: build/bin/JIRA Worklog Publisher.app)
 wails build -platform darwin
 
 # Clean build
@@ -41,13 +41,13 @@ wails build -platform darwin -clean
 ### Install the app (macOS)
 
 ```bash
-cp -R "build/bin/JIRA Work Calendar.app" /Applications/
+cp -R "build/bin/JIRA Worklog Publisher.app" /Applications/
 ```
 
 ## Project Structure
 
 ```
-Jira_Calender/
+jira-worklog-publisher/
 ├── main.go              # Wails entry point, window options, asset embedding
 ├── app.go               # Backend API exposed to frontend (GetConfig, GetWorkLogs, AddWorklog, etc.)
 ├── wails.json           # Wails config (name, icon, frontend dir)
@@ -71,7 +71,12 @@ On first run, enter your Jira details:
 - **Email** – Jira account email
 - **API Token** – Create at [Atlassian API tokens](https://id.atlassian.com/manage-profile/security/api-tokens)
 
-Config is stored at `~/.jira-calendar-config.json` (mode 0600).
+Config is stored at `~/.jira-worklog-publisher-config.json` (mode 0600).
+
+### Security
+
+- Config (including API token) is only in `~/.jira-worklog-publisher-config.json`; that file is in `.gitignore` and must never be committed.
+- The app never logs the API token. If you accidentally commit credentials, rotate the token at [Atlassian API tokens](https://id.atlassian.com/manage-profile/security/api-tokens) immediately.
 
 ## API Usage (Backend)
 
@@ -87,4 +92,4 @@ The app exposes these methods to the frontend via Wails bindings (see `app.go`):
 
 ## License
 
-Private/Personal use.
+MIT License. See [LICENSE](LICENSE).
