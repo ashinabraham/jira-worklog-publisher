@@ -1,0 +1,133 @@
+# Build JIRA Worklog Publisher for Windows, Linux, and macOS.
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to upload assets to (e.g. v1.0.0). Leave empty on release event."
+        required: false
+        default: ""
+
+env:
+  NODE_OPTIONS: "--max-old-space-size=4096"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            os: ubuntu-latest
+            artifact_name: jira-worklog-publisher-linux-amd64
+          - platform: windows/amd64
+            os: windows-latest
+            artifact_name: jira-worklog-publisher-windows-amd64
+          - platform: darwin/arm64
+            os: macos-latest
+            artifact_name: jira-worklog-publisher-darwin-arm64
+          - platform: darwin/amd64
+            os: macos-13
+            artifact_name: jira-worklog-publisher-darwin-amd64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache-dependency-path: go.sum
+
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update -y
+          DISTRO=$(lsb_release -rs)
+          if [[ "$DISTRO" == "24.04" ]]; then
+            sudo apt-get install -y libgtk-3-0 libwebkit2gtk-4.1-dev
+          else
+            sudo apt-get install -y libgtk-3-0 libwebkit2gtk-4.0-dev
+          fi
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.11.0
+
+      - name: Build
+        run: wails build -platform ${{ matrix.platform }} -clean
+        env:
+          # Ubuntu 24.04 uses WebKit2GTK 4.1
+          CGO_ENABLED: "1"
+
+      - name: Fix Linux binary permissions
+        if: matrix.os == 'ubuntu-latest'
+        run: chmod +x build/bin/*
+
+      - name: Prepare Linux artifact
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          mkdir -p artifact
+          cp build/bin/jira-worklog-publisher artifact/jira-worklog-publisher-linux-amd64
+
+      - name: Prepare Windows artifact
+        if: matrix.os == 'windows-latest'
+        run: |
+          New-Item -ItemType Directory -Force -Path artifact
+          Copy-Item build/bin/jira-worklog-publisher.exe artifact/jira-worklog-publisher-windows-amd64.exe
+
+      - name: Prepare macOS artifact
+        if: startsWith(matrix.os, 'macos')
+        run: |
+          mkdir -p artifact
+          cd build/bin && ditto -c -k --keepParent "JIRA Worklog Publisher.app" ../../artifact/${{ matrix.artifact_name }}.zip && cd ../..
+          ls -la artifact/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: artifact/
+
+  release:
+    needs: build
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag != '')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release assets
+        run: |
+          find artifacts -type f
+          mkdir -p release-upload
+          for d in artifacts/*/; do
+            cp -r "$d"* release-upload/ 2>/dev/null || true
+          done
+          ls -la release-upload/
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event_name == 'release' && github.ref_name || github.event.inputs.release_tag }}
+          files: |
+            release-upload/jira-worklog-publisher-linux-amd64
+            release-upload/jira-worklog-publisher-windows-amd64.exe
+            release-upload/jira-worklog-publisher-darwin-arm64.zip
+            release-upload/jira-worklog-publisher-darwin-amd64.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
