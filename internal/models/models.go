@@ -1,3 +1,5 @@
+// Package models defines data structures for Jira configuration, work logs,
+// and API request/response types (including Atlassian Document Format for comments).
 package models
 
 import (
@@ -6,14 +8,14 @@ import (
 	"time"
 )
 
-// JiraConfig holds the Jira instance configuration
+// JiraConfig holds the Jira instance configuration (base URL, username, API token).
 type JiraConfig struct {
 	BaseURL  string `json:"baseURL"`
 	Username string `json:"username"`
 	APIToken string `json:"apiToken"`
 }
 
-// WorkLog represents a single work log entry
+// WorkLog represents a single work log entry as returned by the Jira API.
 type WorkLog struct {
 	ID               string        `json:"id"`
 	IssueKey         string        `json:"issueKey"`
@@ -25,7 +27,7 @@ type WorkLog struct {
 	Comment          string        `json:"comment"`
 }
 
-// WorkLogAuthor represents the author of a work log
+// WorkLogAuthor holds author details for a work log.
 type WorkLogAuthor struct {
 	DisplayName  string `json:"displayName"`
 	AccountID    string `json:"accountID"`
@@ -47,14 +49,14 @@ type TicketWork struct {
 	Comments []string
 }
 
-// WorklogRequest represents a request to create a worklog
+// WorklogRequest is the payload for creating a work log (Jira REST API v3).
 type WorklogRequest struct {
 	Comment          string `json:"comment"`
 	Started          string `json:"started"`          // ISO 8601 format: "2024-01-15T10:00:00.000+0000"
 	TimeSpentSeconds int    `json:"timeSpentSeconds"`
 }
 
-// ADFComment represents an Atlassian Document Format comment structure
+// ADFComment represents an Atlassian Document Format (ADF) comment structure from Jira API v3.
 type ADFComment struct {
 	Type    string `json:"type"`
 	Version int    `json:"version"`
@@ -67,7 +69,7 @@ type ADFComment struct {
 	} `json:"content"`
 }
 
-// WorklogResponse represents the response from creating a worklog
+// WorklogResponse is the response from the create work log API. Comment may be string or ADF object.
 type WorklogResponse struct {
 	ID               string      `json:"id"`
 	Self             string      `json:"self"`
@@ -79,7 +81,7 @@ type WorklogResponse struct {
 	TimeSpentSeconds int         `json:"timeSpentSeconds"`
 }
 
-// GetCommentText extracts the text from the comment field (handles both string and ADF format)
+// GetCommentText returns the plain text of the comment, whether it was stored as a string or ADF.
 func (wr *WorklogResponse) GetCommentText() string {
 	if wr.Comment == nil {
 		return ""

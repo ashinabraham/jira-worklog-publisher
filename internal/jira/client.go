@@ -1,3 +1,6 @@
+// Package jira provides a Jira REST API v3 client with pluggable authentication.
+// It supports fetching user info, searching issues via JQL, retrieving work logs,
+// and creating work logs (with ADF comment format).
 package jira
 
 import (
@@ -13,7 +16,7 @@ import (
 	"jira-calendar/internal/models"
 )
 
-// Authenticator defines the interface for Jira authentication mechanisms
+// Authenticator is the interface for Jira authentication (e.g. BasicAuth, future OAuth).
 type Authenticator interface {
 	// AuthenticateRequest adds authentication headers/credentials to the HTTP request
 	AuthenticateRequest(req *http.Request) error
@@ -21,14 +24,14 @@ type Authenticator interface {
 	GetHTTPClient() *http.Client
 }
 
-// BasicAuth implements Authenticator using username and API token
+// BasicAuth implements Authenticator using Jira username (email) and API token.
 type BasicAuth struct {
 	username string
 	apiToken string
 	client   *http.Client
 }
 
-// NewBasicAuth creates a new basic authentication mechanism
+// NewBasicAuth returns a BasicAuth authenticator for the given username and API token.
 func NewBasicAuth(username, apiToken string) Authenticator {
 	return &BasicAuth{
 		username: username,
@@ -39,18 +42,18 @@ func NewBasicAuth(username, apiToken string) Authenticator {
 	}
 }
 
-// AuthenticateRequest adds basic auth headers to the request
+// AuthenticateRequest sets Basic Auth header on the request.
 func (b *BasicAuth) AuthenticateRequest(req *http.Request) error {
 	req.SetBasicAuth(b.username, b.apiToken)
 	return nil
 }
 
-// GetHTTPClient returns the HTTP client for basic auth
+// GetHTTPClient returns the HTTP client used by this authenticator.
 func (b *BasicAuth) GetHTTPClient() *http.Client {
 	return b.client
 }
 
-// Client is a custom Jira API client
+// Client is the Jira REST API v3 client. AccountID is set after successful auth for filtering work logs.
 type Client struct {
 	httpClient *http.Client
 	baseURL    string
@@ -166,7 +169,7 @@ type jiraSearchResponse struct {
 	NextPageToken string      `json:"nextPageToken,omitempty"`
 }
 
-// NewClient creates a new Jira client with the provided authenticator
+// NewClient creates a new Jira client, normalizes baseURL, and verifies auth by fetching the current user.
 func NewClient(baseURL string, auth Authenticator) (*Client, error) {
 	log.Printf("[JIRA] Creating new Jira client")
 	log.Printf("[JIRA] BaseURL: %s", baseURL)
@@ -196,7 +199,7 @@ func NewClient(baseURL string, auth Authenticator) (*Client, error) {
 	return client, nil
 }
 
-// getCurrentUser fetches the current authenticated user
+// getCurrentUser calls /rest/api/3/myself to fetch the current user.
 func (jc *Client) getCurrentUser() (*jiraUser, error) {
 	url := fmt.Sprintf("%s/rest/api/3/myself", jc.baseURL)
 	log.Printf("[JIRA] GET %s", url)
@@ -233,7 +236,7 @@ func (jc *Client) getCurrentUser() (*jiraUser, error) {
 	return &user, nil
 }
 
-// GetUserInfo fetches the current user information from the API
+// GetUserInfo returns the current user's profile as a map (displayName, avatarURL, timeZone, etc.).
 func (jc *Client) GetUserInfo() (map[string]interface{}, error) {
 	user, err := jc.getCurrentUser()
 	if err != nil {
@@ -264,7 +267,7 @@ func (jc *Client) GetUserInfo() (map[string]interface{}, error) {
 	}, nil
 }
 
-// searchIssuesWithJQL performs a JQL search using the Jira REST API v3
+// searchIssuesWithJQL runs a JQL search with pagination (POST /rest/api/3/search/jql).
 func (jc *Client) searchIssuesWithJQL(jql string) ([]jiraIssue, error) {
 	var allIssues []jiraIssue
 	nextPageToken := ""
@@ -331,7 +334,7 @@ func (jc *Client) searchIssuesWithJQL(jql string) ([]jiraIssue, error) {
 	return allIssues, nil
 }
 
-// GetWorkLogs fetches work logs for the given date range using JQL search
+// GetWorkLogs fetches work logs in the date range via JQL search and worklog API, filtered by current user.
 func (jc *Client) GetWorkLogs(startDate, endDate time.Time) ([]models.WorkLog, error) {
 	// Build JQL query for issues with worklogs in date range
 	startStr := startDate.Format("2006-01-02")
@@ -544,6 +547,7 @@ func AggregateWorkLogs(workLogs []models.WorkLog) map[string]*models.DayWorkSumm
 }
 
 // CreateWorklog creates a new worklog entry for the given issue
+// CreateWorklog POSTs a work log to the given issue (comment is sent in ADF format).
 func (jc *Client) CreateWorklog(issueKey string, req models.WorklogRequest) (*models.WorklogResponse, error) {
 	url := fmt.Sprintf("%s/rest/api/3/issue/%s/worklog", jc.baseURL, issueKey)
 	log.Printf("[JIRA] POST %s", url)

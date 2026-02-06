@@ -1,3 +1,8 @@
+/**
+ * JIRA Work Calendar – Styles
+ * Layout: fixed window (1200x700), screens (config, date, calendar), modal.
+ * Includes: calendar widget, date picker, calendar table, refresh button, error message.
+ */
 * {
     margin: 0;
     padding: 0;

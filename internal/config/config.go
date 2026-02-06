@@ -1,3 +1,5 @@
+// Package config loads and saves Jira configuration to a JSON file
+// in the user's home directory (~/.jira-calendar-config.json).
 package config
 
 import (
@@ -9,7 +11,8 @@ import (
 	"jira-calendar/internal/models"
 )
 
-// Load loads the Jira configuration from the user's home directory
+// Load reads the Jira configuration from ~/.jira-calendar-config.json.
+// Returns an empty JiraConfig if the file is missing or invalid.
 func Load() models.JiraConfig {
 	homeDir, _ := os.UserHomeDir()
 	configPath := fmt.Sprintf("%s/.jira-calendar-config.json", homeDir)
@@ -32,7 +35,7 @@ func Load() models.JiraConfig {
 	return cfg
 }
 
-// Save saves the Jira configuration to the user's home directory
+// Save writes the Jira configuration to ~/.jira-calendar-config.json with mode 0600.
 func Save(cfg models.JiraConfig) error {
 	homeDir, _ := os.UserHomeDir()
 	configPath := fmt.Sprintf("%s/.jira-calendar-config.json", homeDir)

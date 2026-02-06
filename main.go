@@ -1,3 +1,5 @@
+// Package main is the entry point for the JIRA Work Calendar desktop application.
+// It initializes the Wails runtime, embeds frontend assets, and runs the app window.
 package main
 
 import (
@@ -8,15 +10,15 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 )
 
+// assets embeds the frontend/dist directory (HTML, CSS, JS) into the binary.
 //go:embed all:frontend/dist
 var assets embed.FS
 
-// main application entry point
+// main starts the Wails application: creates the App backend, configures the window
+// (fixed 1200x700), and binds the App to the frontend.
 func main() {
-	// Create an instance of the app structure
 	app := NewApp()
 
-	// Create application with options
 	err := wails.Run(&options.App{
 		Title:     "JIRA Work Calendar",
 		Width:     1200,

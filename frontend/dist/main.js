@@ -1,7 +1,17 @@
-// Wails runtime will be available as window.go
+/**
+ * JIRA Work Calendar – Frontend
+ *
+ * Uses Wails bindings (window.go.main.App) to call backend methods:
+ * - GetConfig, SaveConfig: Jira configuration
+ * - GetUserInfo: current user (avatar, timezone, etc.)
+ * - GetWorkLogs(startDate, endDate): work logs for date range (YYYY-MM-DD)
+ * - AddWorklog(issueKey, comment, started, timeSpentSeconds): create work log
+ *
+ * Screens: config → date (home with calendar widget) → calendar (table) + add-worklog modal.
+ * State: calendarState (date picker), currentCalendarDateRange (for refresh), worklog form and date picker.
+ */
 let app;
 
-// Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
     // Wait for Wails runtime
     if (window.go && window.go.main && window.go.main.App) {
