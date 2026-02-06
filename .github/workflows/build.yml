@@ -65,9 +65,14 @@ jobs:
         run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.11.0
 
       - name: Build
-        run: wails build -platform ${{ matrix.platform }} -clean
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            wails build -platform ${{ matrix.platform }} -clean -tags webkit2_41
+          else
+            wails build -platform ${{ matrix.platform }} -clean
+          fi
         env:
-          # Ubuntu 24.04 uses WebKit2GTK 4.1
           CGO_ENABLED: "1"
 
       - name: Fix Linux binary permissions
