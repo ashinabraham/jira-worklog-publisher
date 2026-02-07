@@ -123,10 +123,10 @@ func (c *jiraComment) String() string {
 		// Extract text from content array
 		var text strings.Builder
 		for _, item := range richText.Content {
-			if item.Type == "text" {
+			switch item.Type {
+			case "text":
 				text.WriteString(item.Text)
-			} else if item.Type == "paragraph" {
-				// Handle nested content in paragraphs
+			case "paragraph":
 				for _, nested := range item.Content {
 					if nested.Type == "text" {
 						text.WriteString(nested.Text)
@@ -218,7 +218,7 @@ func (jc *Client) getCurrentUser() (*jiraUser, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute request: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, _ := io.ReadAll(resp.Body)
 	log.Printf("[JIRA] Response status: %d", resp.StatusCode)
@@ -304,7 +304,7 @@ func (jc *Client) searchIssuesWithJQL(jql string) ([]jiraIssue, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to execute request: %v", err)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		body, _ := io.ReadAll(resp.Body)
 		log.Printf("[JIRA] Response status: %d", resp.StatusCode)
@@ -411,7 +411,7 @@ func (jc *Client) getWorkLogsForIssue(issueID, issueKey, issueSummary string, st
 		if err != nil {
 			return nil, fmt.Errorf("failed to execute request: %v", err)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		body, _ := io.ReadAll(resp.Body)
 		log.Printf("[JIRA] Response status: %d", resp.StatusCode)
@@ -604,7 +604,7 @@ func (jc *Client) CreateWorklog(issueKey string, req models.WorklogRequest) (*mo
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute request: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, _ := io.ReadAll(resp.Body)
 	log.Printf("[JIRA] Response status: %d", resp.StatusCode)

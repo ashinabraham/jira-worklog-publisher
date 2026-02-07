@@ -4,18 +4,33 @@ package config
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 
 	"jira-worklog-publisher/internal/models"
 )
 
+// configPathFn returns the path to the config file. Tests may override this.
+var configPathFn = defaultConfigPath
+
+func defaultConfigPath() string {
+	homeDir, _ := os.UserHomeDir()
+	return filepath.Join(homeDir, ".jira-worklog-publisher-config.json")
+}
+
+// SetConfigPathForTest sets the config path for tests. Call the returned
+// restore function when done (e.g. defer config.SetConfigPathForTest(fn)()).
+func SetConfigPathForTest(fn func() string) (restore func()) {
+	prev := configPathFn
+	configPathFn = fn
+	return func() { configPathFn = prev }
+}
+
 // Load reads the Jira configuration from ~/.jira-worklog-publisher-config.json.
 // Returns an empty JiraConfig if the file is missing or invalid.
 func Load() models.JiraConfig {
-	homeDir, _ := os.UserHomeDir()
-	configPath := fmt.Sprintf("%s/.jira-worklog-publisher-config.json", homeDir)
+	configPath := configPathFn()
 
 	log.Printf("[CONFIG] Loading config from: %s", configPath)
 
@@ -37,8 +52,7 @@ func Load() models.JiraConfig {
 
 // Save writes the Jira configuration to ~/.jira-worklog-publisher-config.json with mode 0600.
 func Save(cfg models.JiraConfig) error {
-	homeDir, _ := os.UserHomeDir()
-	configPath := fmt.Sprintf("%s/.jira-worklog-publisher-config.json", homeDir)
+	configPath := configPathFn()
 
 	log.Printf("[CONFIG] Saving config to: %s", configPath)
 	log.Printf("[CONFIG] BaseURL: %s, Username: %s", cfg.BaseURL, cfg.Username)
