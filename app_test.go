@@ -57,7 +57,7 @@ func TestGetWorkLogs_NotAuthenticated(t *testing.T) {
 func TestGetWorkLogs_InvalidStartDate(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"accountId":"x","displayName":"","emailAddress":"","timeZone":""}`))
+		_, _ = w.Write([]byte(`{"accountId":"x","displayName":"","emailAddress":"","timeZone":""}`))
 	}))
 	defer server.Close()
 
@@ -80,7 +80,7 @@ func TestGetWorkLogs_InvalidStartDate(t *testing.T) {
 func TestGetWorkLogs_InvalidEndDate(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"accountId":"x","displayName":"","emailAddress":"","timeZone":""}`))
+		_, _ = w.Write([]byte(`{"accountId":"x","displayName":"","emailAddress":"","timeZone":""}`))
 	}))
 	defer server.Close()
 
@@ -111,7 +111,7 @@ func TestAddWorklog_NotAuthenticated(t *testing.T) {
 func TestSaveConfig_ThenGetUserInfo(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"accountId":"acc-1","displayName":"Test User","emailAddress":"test@example.com","timeZone":"UTC"}`))
+		_, _ = w.Write([]byte(`{"accountId":"acc-1","displayName":"Test User","emailAddress":"test@example.com","timeZone":"UTC"}`))
 	}))
 	defer server.Close()
 

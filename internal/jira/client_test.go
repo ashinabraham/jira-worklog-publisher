@@ -146,7 +146,7 @@ func TestNewClient_Success(t *testing.T) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"accountId":"acc-123","displayName":"Test User","emailAddress":"test@example.com","timeZone":"UTC"}`))
+		_, _ = w.Write([]byte(`{"accountId":"acc-123","displayName":"Test User","emailAddress":"test@example.com","timeZone":"UTC"}`))
 	}))
 	defer server.Close()
 
@@ -176,7 +176,7 @@ func TestNewClient_AuthFailure(t *testing.T) {
 func TestNewClient_NormalizesBaseURL(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"accountId":"x","displayName":"","emailAddress":"","timeZone":""}`))
+		_, _ = w.Write([]byte(`{"accountId":"x","displayName":"","emailAddress":"","timeZone":""}`))
 	}))
 	defer server.Close()
 
@@ -194,7 +194,7 @@ func TestNewClient_NormalizesBaseURL(t *testing.T) {
 func TestClient_GetUserInfo(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"accountId":"id","displayName":"Dev","emailAddress":"dev@ex.com","avatarUrls":{"48x48":"https://avatar/48"},"timeZone":"UTC","locale":"en","accountType":"atlassian","active":true}`))
+		_, _ = w.Write([]byte(`{"accountId":"id","displayName":"Dev","emailAddress":"dev@ex.com","avatarUrls":{"48x48":"https://avatar/48"},"timeZone":"UTC","locale":"en","accountType":"atlassian","active":true}`))
 	}))
 	defer server.Close()
 
@@ -218,7 +218,7 @@ func TestClient_CreateWorklog_Success(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/rest/api/3/myself":
-			w.Write([]byte(`{"accountId":"x","displayName":"","emailAddress":"","timeZone":""}`))
+			_, _ = w.Write([]byte(`{"accountId":"x","displayName":"","emailAddress":"","timeZone":""}`))
 			return
 		case "/rest/api/3/issue/PROJ-1/worklog":
 			if r.Method != http.MethodPost {
@@ -226,7 +226,7 @@ func TestClient_CreateWorklog_Success(t *testing.T) {
 				return
 			}
 			w.WriteHeader(http.StatusCreated)
-			w.Write([]byte(`{"id":"wl-1","self":"https://jira/rest/api/3/issue/PROJ-1/worklog/wl-1","started":"2024-01-15T10:00:00.000+0000","timeSpentSeconds":3600,"timeSpent":"1h","comment":"did work"}`))
+			_, _ = w.Write([]byte(`{"id":"wl-1","self":"https://jira/rest/api/3/issue/PROJ-1/worklog/wl-1","started":"2024-01-15T10:00:00.000+0000","timeSpentSeconds":3600,"timeSpent":"1h","comment":"did work"}`))
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
